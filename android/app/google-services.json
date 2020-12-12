@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "143759888462",
+    "project_id": "restock-a7997",
+    "storage_bucket": "restock-a7997.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:143759888462:android:f1f869c22e7b54187f331f",
+        "android_client_info": {
+          "package_name": "com.example.restock_client"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "143759888462-07pakdpfohgmlb6tegpm1klmk8ldc97h.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBPNpqFPeAeFXtOJKLsbomUK2WgHWaFfgc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "143759888462-07pakdpfohgmlb6tegpm1klmk8ldc97h.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
