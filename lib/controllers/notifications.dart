@@ -1,6 +1,5 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -29,7 +28,6 @@ class MessageContext extends ChangeNotifier {
       FlutterLocalNotificationsPlugin();
 
   FirebaseMessaging messaging;
-  FirebaseFirestore firestore;
   String _userToken;
 
   MessageContext();
@@ -57,9 +55,10 @@ class MessageContext extends ChangeNotifier {
     return true;
   }
 
-  Future<bool> initMessaging() async {
+  Future<bool> initCloudMessaging() async {
     bool fcmInitialized = true;
     messaging = FirebaseMessaging.instance;
+    
 
     NotificationSettings settings = await messaging.requestPermission(
       alert: true,
@@ -111,27 +110,15 @@ class MessageContext extends ChangeNotifier {
     _userToken = await messaging.getToken();
     print("token: $_userToken");
 
-    bool localInitialized = await initLocalNotifications();
-    bool dbInitialized = await initDatabase();
+    FirebaseMessaging.onBackgroundMessage(backgroundMessageHandler);
 
-    return fcmInitialized && localInitialized && dbInitialized;
+    return fcmInitialized;
   }
-
-  Future<bool> initDatabase() async {
-    try {
-      firestore = FirebaseFirestore.instance;
-    } catch (e) {
-      print(e);
-      return false;
-    }
-    return true;
-  }
-
-  
 
   Future selectNotification(String payload) async {
     if (payload != null) {
       debugPrint('notification payload: $payload');
     }
   }
+
 }

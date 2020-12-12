@@ -4,19 +4,19 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:restock_client/controllers/notifications.dart';
 import 'package:flutter/foundation.dart';
 
-
-
 class AppContext extends ChangeNotifier {
   MessageContext _notificationController = MessageContext();
   FirebaseFirestore firestore;
 
   AppContext();
 
-  Future<bool> initCloudFunctions() async {
-        await Firebase.initializeApp();
+  Future<bool> init() async {
+    await Firebase.initializeApp();
 
     await _notificationController.initLocalNotifications();
-    await _notificationController.initMessaging();
+    await _notificationController.initCloudMessaging();
+    
+    await initDatabase();
   }
 
   Future<bool> initDatabase() async {

@@ -32,8 +32,7 @@ class RestockClient extends StatefulWidget {
 
 class _RestockClientState extends State<RestockClient> {
   Future<bool> initFirebase(AppContext providerContext) async {
-    bool enabledNotifications = await providerContext.initCloudFunctions();
-    FirebaseMessaging.onBackgroundMessage(backgroundMessageHandler);
+    bool enabledNotifications = await providerContext.init();  
     return enabledNotifications;
   }
 
@@ -44,9 +43,10 @@ class _RestockClientState extends State<RestockClient> {
 
   Widget _buildBody() {
     var appContext = Provider.of<AppContext>(context);
+    
     return FutureBuilder(
       // Initialize FlutterFire:
-      future: initFirebase(appContext),
+      future: appContext.init(),
       builder: (context, snapshot) {
         // Check for errors
         if (snapshot.hasError) {
