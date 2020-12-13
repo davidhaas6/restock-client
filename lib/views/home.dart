@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import 'package:restock_client/controllers/notifications.dart';
+import 'package:flutter_spinkit/flutter_spinkit.dart';
+
+import 'package:restock_client/controllers/app_context.dart';
 import 'package:restock_client/models/product.dart';
 
 const CARDS = [
@@ -47,7 +49,7 @@ class _HomePageState extends State<HomePage> {
     return Column(
       children: [
         _buildTopVisual(),
-        Expanded(child: _buildProductList()),
+        Expanded(child: _buildProducts()),
       ],
       crossAxisAlignment: CrossAxisAlignment.center,
     );
@@ -60,15 +62,42 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildProductList() {
-    var cards = CARDS.map((card) => Product(card, card)).toList();
+  Widget _buildProducts() {
+    var appContext = Provider.of<AppContext>(context);
+    return FutureBuilder(
+      // Initialize FlutterFire:
+      future: appContext.pullProducts(),
+      builder: (context, snapshot) {
+        // Check for errors
+        if (snapshot.hasError) {
+          print(snapshot.error);
+          return Center(
+            child: Icon(Icons.error, color: Colors.red),
+          );
+        }
+
+        // Once complete, show your application
+        if (snapshot.connectionState == ConnectionState.done) {
+          return _buildProductList(snapshot.data);
+        }
+
+        // Otherwise, show something whilst waiting for initialization to complete
+        return Center(
+          child: SpinKitRotatingCircle(color: Colors.white, size: 50.0),
+        );
+      },
+    );
+  }
+
+
+  Widget _buildProductList(List products) {
     return ListView.builder(
-      itemCount: cards.length,
+      itemCount: products.length,
       itemBuilder: (context, index) {
         return Card(
           child: SwitchListTile(
             title: Text(
-              '${cards[index].name}',
+              '${products[index].name}',
               style: TextStyle(
                 color: Colors.black,
                 fontSize: 20,
