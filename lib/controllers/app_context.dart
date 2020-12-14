@@ -4,14 +4,18 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:restock_client/controllers/notifications.dart';
 import 'package:flutter/foundation.dart';
 import 'package:restock_client/models/product.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AppContext extends ChangeNotifier {
   MessageContext _notificationController = MessageContext();
   FirebaseFirestore _firestore;
+  SharedPreferences preferences;
 
   AppContext();
 
   Future<bool> init() async {
+    preferences = await SharedPreferences.getInstance();
+
     await Firebase.initializeApp();
 
     await _notificationController.initLocalNotifications();
@@ -20,6 +24,7 @@ class AppContext extends ChangeNotifier {
     await initDatabase();
   }
 
+  // Initializes connection with Firebase database
   Future<bool> initDatabase() async {
     try {
       _firestore = FirebaseFirestore.instance;
@@ -30,14 +35,35 @@ class AppContext extends ChangeNotifier {
     return true;
   }
 
+  // pulls available products from firestore database
   Future<List> pullProducts() async {
-    // pulls available products from firestore database
-    final snapshot = await _firestore.collection('products').get();
+    final productCollection = await _firestore.collection('products').get();
 
     // convert workouts to workout class
-    var products = snapshot.docs.map(
+    var products = productCollection.docs.map(
       (doc) => Product.fromJson(doc.data(), doc.id),
-    );
-    return products.toList();
+    ).toList();
+
+    // register new products with notification system
+    for (var product in products){
+      if (!preferences.containsKey(product.id)) {
+        preferences.setBool(product.id, false);
+      }
+    }
+
+
+    return products;
+  }
+
+  followProduct(Product product) {
+    preferences.setBool(product.id, true);
+  }
+
+  unfollowProduct(Product product) {
+    preferences.setBool(product.id, false);
+  }
+
+  isFollowing(Product product) {
+    return preferences.getBool(product.id);
   }
 }

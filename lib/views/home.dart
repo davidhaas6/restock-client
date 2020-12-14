@@ -14,12 +14,13 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   String _homeScreenText = "Body";
   Future<List> _productsRequest;
+  List<Product> _productList;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      var appContext = Provider.of<AppContext>(context);
+      AppContext appContext = Provider.of<AppContext>(context);
       setState(() {
         _productsRequest = appContext.pullProducts();
       });
@@ -101,10 +102,17 @@ class _HomePageState extends State<HomePage> {
         // Once complete, show your application
         if (snapshot.connectionState == ConnectionState.done ||
             snapshot.hasData) {
-          List<Product> products = snapshot.data;
+          if (_productList == null) {
+            _productList = snapshot.data;
+
+            // List<bool> _isFollowingList = _productList.map((p) => appContext.isFollowing(p));
+
+            // sort to have followed at top
+            sortProducts();
+          }
           return ListView.builder(
-            itemCount: products.length,
-            itemBuilder: (context, i) => _buildProductTile(products[i]),
+            itemCount: _productList.length,
+            itemBuilder: (context, i) => _buildProductTile(i),
           );
         }
 
@@ -116,7 +124,12 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildProductTile(Product product) {
+  Widget _buildProductTile(int productIndex) {
+    AppContext appContext = Provider.of<AppContext>(context);
+
+    Product product = _productList[productIndex];
+    bool isFollowing = appContext.isFollowing(product);
+
     return Card(
       child: SwitchListTile.adaptive(
         title: Text(
@@ -126,17 +139,60 @@ class _HomePageState extends State<HomePage> {
             fontSize: 20,
           ),
         ),
-        value: true,
+        value: isFollowing,
         secondary: SizedBox(
           height: 40,
           child: Image.asset(Product.getIcon(product.type)),
         ),
         onChanged: (bool value) {
+
+          // actually (un)follow the product
           setState(() {
-            // _lights = value;
+            if (isFollowing)
+              appContext.unfollowProduct(product);
+            else {
+              appContext.followProduct(product);
+            }
+          });
+
+          final cachedProducts = List.from(_productList);
+          Future.delayed(const Duration(milliseconds: 500), () {
+            if (cachedProducts == _productList) {
+              print("No change to product list between call and execution");
+            } else {
+              print("Product list changed between tap and execution");
+            }
+            setState(() {
+              sortProducts();
+              // updateProductList(productIndex, !isFollowing);
+            });
           });
         },
       ),
     );
+  }
+
+
+  void sortProducts() {
+    /*
+    Sort product list so followed products are at top
+    */
+    AppContext appContext = Provider.of<AppContext>(context);
+    Map<Product, bool> isFollowing = Map.fromIterable(
+      _productList,
+      key: (p) => p,
+      value: (p) => appContext.isFollowing(p),
+    );
+
+    // sort true then false
+    _productList.sort((a, b) {
+      if (!(isFollowing[a] ^ isFollowing[b])) {
+        // equal
+        return 0;
+      }
+
+      // sorts low to high --> a should be less than b if a = true and b = false
+      return isFollowing[a] && !isFollowing[b] ? -1 : 1;
+    });
   }
 }

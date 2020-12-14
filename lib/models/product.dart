@@ -3,9 +3,9 @@
 enum ProductType { GPU, CPU, Console }
 
 class Product {
-  final String name, channel;
+  final String name, id;
   final ProductType type;
-  Product(this.name, this.channel, this.type);
+  Product(this.name, this.id, this.type);
 
   factory Product.fromJson(Map<String, dynamic> data, String firebaseID) {
     // Maps string product type from firebase to the enum
