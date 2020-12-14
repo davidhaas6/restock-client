@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -6,15 +7,24 @@ import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:restock_client/controllers/app_context.dart';
 import 'package:restock_client/models/product.dart';
 
+const _imageLinks = [
+  "https://www.nvidia.com/content/dam/en-zz/Solutions/homepage/sfg/geforce-ampere-rtx-30-series-learn-nv-sfg-295x166@2x.jpg",
+  "https://venturebeat.com/wp-content/uploads/2019/09/AMD-Ryzen-2nd-Gen_8-2060x1057.png",
+  "https://cdn.vox-cdn.com/thumbor/XBkbwCeopp8ccumdPDcjWxmLkvs=/1400x1400/filters:format(jpeg)/cdn.vox-cdn.com/uploads/chorus_asset/file/22015299/vpavic_4278_20201030_0150.jpg",
+];
+
 class HomePage extends StatefulWidget {
   @override
   _HomePageState createState() => _HomePageState();
 }
 
 class _HomePageState extends State<HomePage> {
-  String _homeScreenText = "Body";
+  final Color primaryColor = Color.fromRGBO(41, 60, 79, 1);
+
   Future<List> _productsRequest;
-  List<Product> _productList;
+  List<Product> _productList;  
+
+  Image _headerImage;
 
   final List<String> _tabNames = ['All', 'GPUs', 'CPUs', 'Consoles'];
   List _tabMembership = [
@@ -24,17 +34,23 @@ class _HomePageState extends State<HomePage> {
     (product) => product.type == ProductType.Console,
   ]; // membership tests for the contents of each tab
 
-  // List<ProductType>
 
   @override
   void initState() {
     super.initState();
+
+    // pull products from cloud after state initialized
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       AppContext appContext = Provider.of<AppContext>(context);
       setState(() {
         _productsRequest = appContext.pullProducts();
       });
     });
+
+    _headerImage = Image.network(
+      (_imageLinks.toList()..shuffle()).first,
+      fit: BoxFit.cover,
+    );
   }
 
   @override
@@ -42,7 +58,6 @@ class _HomePageState extends State<HomePage> {
     return DefaultTabController(
       length: _tabNames.length,
       child: Scaffold(
-        // backgroundColor: Color.fromRGBO(41, 60, 79, 1),
         body: NestedScrollView(
           headerSliverBuilder: _buildAppBar,
           body: _buildBody(),
@@ -55,6 +70,7 @@ class _HomePageState extends State<HomePage> {
     return Stack(
       children: [
         _buildContent(),
+        // could have like a FAB or something here
       ],
     );
   }
@@ -63,46 +79,55 @@ class _HomePageState extends State<HomePage> {
     // TODO: https://material.io/components/app-bars-top#anatomy
     final screenHeight = MediaQuery.of(context).size.height;
     return [
-      SliverAppBar(
-        expandedHeight: screenHeight * 0.35,
-        elevation: 2,
-        backgroundColor: Color.fromRGBO(41, 60, 79, 1),
-        shadowColor: Color.fromRGBO(41, 60, 79, 1),
-        floating: false,
-        pinned: true,
-        title: Text(
-          "Restocker",
-          style: TextStyle(color: Colors.white, fontSize: 22.0),
-        ),
-        flexibleSpace: FlexibleSpaceBar(
-          centerTitle: false,
-          background: _buildHeaderVisual(),
-        ),
-        actions: <Widget>[
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: IconButton(
-              icon: Icon(Icons.search, size: 25),
-              tooltip: 'Search for products',
+      SliverOverlapAbsorber(
+        handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
+        sliver: SliverSafeArea(
+          top: false,
+          // NOTE: The above 3 widgets prevent the body from going under the app bar 
+          // they cause a slight 'bump' when scrolling up though for a list that spans 
+          // more than the screen
+
+          sliver: SliverAppBar(
+            expandedHeight: screenHeight * 0.4,
+            elevation: 4,
+            backgroundColor: primaryColor,
+            floating: false,
+            pinned: true,
+
+            title: Text(
+              "Restocker",
+              style: TextStyle(color: Colors.white, fontSize: 22.0),
+            ),
+            flexibleSpace: FlexibleSpaceBar(
+              centerTitle: false,
+              background: _buildHeaderVisual(),
+            ),
+            // actions: <Widget>[
+            //   Padding(
+            //     padding: const EdgeInsets.symmetric(horizontal: 8),
+            //     child: IconButton(
+            //       icon: Icon(Icons.search, size: 25),
+            //       tooltip: 'Search for products',
+            //       onPressed: () {},
+            //     ),
+            //   ),
+            // ],
+            leading: IconButton(
+              icon: Icon(Icons.menu, size: 25),
               onPressed: () {},
             ),
+            bottom: TabBar(
+              tabs: _tabNames.map((name) => Tab(text: name)).toList(),
+            ),
           ),
-        ],
-        leading: IconButton(
-          icon: Icon(Icons.menu, size: 25),
-          onPressed: () {},
         ),
-        bottom: TabBar(tabs: _tabNames.map((name) => Tab(text: name)).toList()),
       ),
     ];
   }
 
   Widget _buildHeaderVisual() {
     //TODO: Graphs?
-    return Image.network(
-      "https://www.nvidia.com/content/dam/en-zz/Solutions/homepage/sfg/geforce-ampere-rtx-30-series-learn-nv-sfg-295x166@2x.jpg",
-      fit: BoxFit.cover,
-    );
+    return _headerImage;
   }
 
   Widget _buildContent() {
@@ -146,13 +171,19 @@ class _HomePageState extends State<HomePage> {
           _productList.where((product) => belongsInTab(product)).toList();
 
       var tab = ListView.builder(
+        padding: const EdgeInsets.all(8),
+        // dragStartBehavior: DragStartBehavior.down,
         itemCount: tabProducts.length,
         itemBuilder: (context, i) => _buildProductTile(tabProducts[i]),
       );
       tabs.add(tab);
     }
 
-    return TabBarView(children: tabs);
+    return TabBarView(
+      children: tabs,
+      physics: BouncingScrollPhysics(),
+      dragStartBehavior: DragStartBehavior.down,
+    );
   }
 
   Widget _buildProductTile(Product product) {
@@ -162,7 +193,9 @@ class _HomePageState extends State<HomePage> {
     bool isFollowing = appContext.isFollowing(product);
 
     return Card(
+      elevation: .5,
       child: SwitchListTile.adaptive(
+        activeColor: primaryColor,
         title: Text(
           '${product.name}',
           style: TextStyle(
@@ -173,7 +206,7 @@ class _HomePageState extends State<HomePage> {
         value: isFollowing,
         secondary: SizedBox(
           height: 40,
-          child: Image.asset(Product.getIcon(product.type)),
+          child: Image.asset(Product.getIcon(product, isFollowing)),
         ),
         onChanged: (bool value) async {
           // actually (un)follow the product
@@ -216,5 +249,17 @@ class _HomePageState extends State<HomePage> {
       // sorts low to high --> a should be less than b if a = true and b = false
       return isFollowing[a] && !isFollowing[b] ? -1 : 1;
     });
+  }
+}
+
+class ProductList extends StatefulWidget {
+  @override
+  _ProductListState createState() => _ProductListState();
+}
+
+class _ProductListState extends State<ProductList> {
+  @override
+  Widget build(BuildContext context) {
+    return Container();
   }
 }

@@ -20,13 +20,19 @@ class Product {
     return Product(data['name'], firebaseID, productType);
   }
 
-  static getIcon(ProductType productType) {
+  static getIcon(Product product, bool isFollowed) {
     Map iconMap = <ProductType, String>{
       ProductType.CPU: 'assets/images/cpu.png',
       ProductType.GPU: 'assets/images/gpu.png',
       ProductType.Console: 'assets/images/console.png',
     };
 
-    return iconMap[productType];
+    String imgPath = iconMap[product.type];
+
+    if (!isFollowed) {
+      imgPath=imgPath.replaceFirst('.png', '_secondary.png');
+    }
+
+    return imgPath;
   }
 }
