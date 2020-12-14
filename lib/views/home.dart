@@ -16,6 +16,16 @@ class _HomePageState extends State<HomePage> {
   Future<List> _productsRequest;
   List<Product> _productList;
 
+  final List<String> _tabNames = ['All', 'GPUs', 'CPUs', 'Consoles'];
+  List _tabMembership = [
+    (product) => true,
+    (product) => product.type == ProductType.GPU,
+    (product) => product.type == ProductType.CPU,
+    (product) => product.type == ProductType.Console,
+  ]; // membership tests for the contents of each tab
+
+  // List<ProductType>
+
   @override
   void initState() {
     super.initState();
@@ -29,11 +39,14 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      // backgroundColor: Color.fromRGBO(41, 60, 79, 1),
-      body: NestedScrollView(
-        headerSliverBuilder: _buildAppBar,
-        body: _buildBody(),
+    return DefaultTabController(
+      length: _tabNames.length,
+      child: Scaffold(
+        // backgroundColor: Color.fromRGBO(41, 60, 79, 1),
+        body: NestedScrollView(
+          headerSliverBuilder: _buildAppBar,
+          body: _buildBody(),
+        ),
       ),
     );
   }
@@ -41,7 +54,7 @@ class _HomePageState extends State<HomePage> {
   Widget _buildBody() {
     return Stack(
       children: [
-        _buildProducts(),
+        _buildContent(),
       ],
     );
   }
@@ -51,30 +64,36 @@ class _HomePageState extends State<HomePage> {
     final screenHeight = MediaQuery.of(context).size.height;
     return [
       SliverAppBar(
-          expandedHeight: screenHeight * 0.35,
-          elevation: 2,
-          floating: false,
-          pinned: true,
-          title: Text("Restocker",
-              style: TextStyle(color: Colors.white, fontSize: 24.0)),
-          flexibleSpace: FlexibleSpaceBar(
-            centerTitle: false,
-            background: _buildHeaderVisual(),
-          ),
-          actions: <Widget>[
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: IconButton(
-                icon: Icon(Icons.search, size: 40),
-                tooltip: 'Search for products',
-                onPressed: () {},
-              ),
+        expandedHeight: screenHeight * 0.35,
+        elevation: 2,
+        backgroundColor: Color.fromRGBO(41, 60, 79, 1),
+        shadowColor: Color.fromRGBO(41, 60, 79, 1),
+        floating: false,
+        pinned: true,
+        title: Text(
+          "Restocker",
+          style: TextStyle(color: Colors.white, fontSize: 22.0),
+        ),
+        flexibleSpace: FlexibleSpaceBar(
+          centerTitle: false,
+          background: _buildHeaderVisual(),
+        ),
+        actions: <Widget>[
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: IconButton(
+              icon: Icon(Icons.search, size: 25),
+              tooltip: 'Search for products',
+              onPressed: () {},
             ),
-          ],
-          leading: IconButton(
-            icon: Icon(Icons.menu, size: 25),
-            onPressed: () {},
-          )),
+          ),
+        ],
+        leading: IconButton(
+          icon: Icon(Icons.menu, size: 25),
+          onPressed: () {},
+        ),
+        bottom: TabBar(tabs: _tabNames.map((name) => Tab(text: name)).toList()),
+      ),
     ];
   }
 
@@ -86,7 +105,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildProducts() {
+  Widget _buildContent() {
     return FutureBuilder(
       // Initialize FlutterFire:
       future: _productsRequest,
@@ -102,18 +121,13 @@ class _HomePageState extends State<HomePage> {
         // Once complete, show your application
         if (snapshot.connectionState == ConnectionState.done ||
             snapshot.hasData) {
+          // intialize a new product list
           if (_productList == null) {
             _productList = snapshot.data;
-
-            // List<bool> _isFollowingList = _productList.map((p) => appContext.isFollowing(p));
-
-            // sort to have followed at top
-            sortProducts();
+            sortProducts(); // sort to have followed at top
           }
-          return ListView.builder(
-            itemCount: _productList.length,
-            itemBuilder: (context, i) => _buildProductTile(i),
-          );
+
+          return _buildProductTabs();
         }
 
         // Otherwise, show something whilst waiting for initialization to complete
@@ -124,10 +138,27 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildProductTile(int productIndex) {
+  Widget _buildProductTabs() {
+    List<Widget> tabs = List();
+    for (int i = 0; i < _tabMembership.length; i++) {
+      var belongsInTab = _tabMembership[i];
+      List tabProducts =
+          _productList.where((product) => belongsInTab(product)).toList();
+
+      var tab = ListView.builder(
+        itemCount: tabProducts.length,
+        itemBuilder: (context, i) => _buildProductTile(tabProducts[i]),
+      );
+      tabs.add(tab);
+    }
+
+    return TabBarView(children: tabs);
+  }
+
+  Widget _buildProductTile(Product product) {
     AppContext appContext = Provider.of<AppContext>(context);
 
-    Product product = _productList[productIndex];
+    // Product product = _productList[productIndex];
     bool isFollowing = appContext.isFollowing(product);
 
     return Card(
@@ -144,8 +175,7 @@ class _HomePageState extends State<HomePage> {
           height: 40,
           child: Image.asset(Product.getIcon(product.type)),
         ),
-        onChanged: (bool value) {
-
+        onChanged: (bool value) async {
           // actually (un)follow the product
           setState(() {
             if (isFollowing)
@@ -155,16 +185,10 @@ class _HomePageState extends State<HomePage> {
             }
           });
 
-          final cachedProducts = List.from(_productList);
-          Future.delayed(const Duration(milliseconds: 500), () {
-            if (cachedProducts == _productList) {
-              print("No change to product list between call and execution");
-            } else {
-              print("Product list changed between tap and execution");
-            }
+          // update ordering of product list
+          Future.delayed(const Duration(milliseconds: 300), () {
             setState(() {
               sortProducts();
-              // updateProductList(productIndex, !isFollowing);
             });
           });
         },
@@ -172,10 +196,8 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-
   void sortProducts() {
-    /*
-    Sort product list so followed products are at top
+    /* Sort product list so followed products are at top
     */
     AppContext appContext = Provider.of<AppContext>(context);
     Map<Product, bool> isFollowing = Map.fromIterable(

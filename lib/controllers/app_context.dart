@@ -7,7 +7,7 @@ import 'package:restock_client/models/product.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AppContext extends ChangeNotifier {
-  MessageContext _notificationController = MessageContext();
+  MessageContext _notifications = MessageContext();
   FirebaseFirestore _firestore;
   SharedPreferences preferences;
 
@@ -18,8 +18,8 @@ class AppContext extends ChangeNotifier {
 
     await Firebase.initializeApp();
 
-    await _notificationController.initLocalNotifications();
-    await _notificationController.initCloudMessaging();
+    await _notifications.initLocalNotifications();
+    await _notifications.initCloudMessaging();
 
     await initDatabase();
   }
@@ -40,27 +40,32 @@ class AppContext extends ChangeNotifier {
     final productCollection = await _firestore.collection('products').get();
 
     // convert workouts to workout class
-    var products = productCollection.docs.map(
-      (doc) => Product.fromJson(doc.data(), doc.id),
-    ).toList();
+    var products = productCollection.docs
+        .map(
+          (doc) => Product.fromJson(doc.data(), doc.id),
+        )
+        .toList();
 
     // register new products with notification system
-    for (var product in products){
+    for (var product in products) {
       if (!preferences.containsKey(product.id)) {
-        preferences.setBool(product.id, false);
+        await unfollowProduct(product);
       }
     }
-
 
     return products;
   }
 
-  followProduct(Product product) {
+  followProduct(Product product) async {
     preferences.setBool(product.id, true);
+    await _notifications.messaging.subscribeToTopic(product.id);
+    print("followed product ${product.id}");
   }
 
-  unfollowProduct(Product product) {
+  unfollowProduct(Product product) async {
     preferences.setBool(product.id, false);
+    await _notifications.messaging.unsubscribeFromTopic(product.id);
+    print("unfollowed product ${product.id}");
   }
 
   isFollowing(Product product) {
