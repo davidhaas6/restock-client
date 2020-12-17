@@ -7,6 +7,8 @@ import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:restock_client/controllers/app_context.dart';
 import 'package:restock_client/models/product.dart';
 
+import 'dart:math';
+
 const _imageLinks = [
   "https://www.nvidia.com/content/dam/en-zz/Solutions/homepage/sfg/geforce-ampere-rtx-30-series-learn-nv-sfg-295x166@2x.jpg",
   "https://venturebeat.com/wp-content/uploads/2019/09/AMD-Ryzen-2nd-Gen_8-2060x1057.png",
@@ -14,6 +16,9 @@ const _imageLinks = [
 ];
 
 class HomePage extends StatefulWidget {
+  HomePage(this.products);
+
+  final List products;
   @override
   _HomePageState createState() => _HomePageState();
 }
@@ -21,8 +26,7 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final Color primaryColor = Color.fromRGBO(41, 60, 79, 1);
 
-  Future<List> _productsRequest;
-  List<Product> _productList;  
+  List<Product> _productList;
 
   Image _headerImage;
 
@@ -34,21 +38,17 @@ class _HomePageState extends State<HomePage> {
     (product) => product.type == ProductType.Console,
   ]; // membership tests for the contents of each tab
 
+  pickRandom(arr) => arr[new Random().nextInt(arr.length)];
 
   @override
   void initState() {
     super.initState();
 
-    // pull products from cloud after state initialized
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      AppContext appContext = Provider.of<AppContext>(context);
-      setState(() {
-        _productsRequest = appContext.pullProducts();
-      });
-    });
+    _productList = widget.products;
+    WidgetsBinding.instance.addPostFrameCallback((_) => sortProducts);
 
     _headerImage = Image.network(
-      (_imageLinks.toList()..shuffle()).first,
+      pickRandom(_imageLinks),
       fit: BoxFit.cover,
     );
   }
@@ -58,35 +58,30 @@ class _HomePageState extends State<HomePage> {
     return DefaultTabController(
       length: _tabNames.length,
       child: Scaffold(
+        // backgroundColor: primaryColor,
         body: NestedScrollView(
           headerSliverBuilder: _buildAppBar,
-          body: _buildBody(),
+          body: Stack(
+            children: [
+              _buildProductViews(),
+              // could have like a FAB or something here
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildBody() {
-    return Stack(
-      children: [
-        _buildContent(),
-        // could have like a FAB or something here
-      ],
-    );
-  }
-
   List<Widget> _buildAppBar(BuildContext context, bool innerBoxIsScrolled) {
-    // TODO: https://material.io/components/app-bars-top#anatomy
     final screenHeight = MediaQuery.of(context).size.height;
     return [
       SliverOverlapAbsorber(
         handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
         sliver: SliverSafeArea(
           top: false,
-          // NOTE: The above 3 widgets prevent the body from going under the app bar 
-          // they cause a slight 'bump' when scrolling up though for a list that spans 
+          // NOTE: The above 3 widgets prevent the body from going under the app bar
+          // they cause a slight 'bump' when scrolling up though for a list that spans
           // more than the screen
-
           sliver: SliverAppBar(
             expandedHeight: screenHeight * 0.4,
             elevation: 4,
@@ -99,19 +94,9 @@ class _HomePageState extends State<HomePage> {
               style: TextStyle(color: Colors.white, fontSize: 22.0),
             ),
             flexibleSpace: FlexibleSpaceBar(
-              centerTitle: false,
+              centerTitle: true,
               background: _buildHeaderVisual(),
             ),
-            // actions: <Widget>[
-            //   Padding(
-            //     padding: const EdgeInsets.symmetric(horizontal: 8),
-            //     child: IconButton(
-            //       icon: Icon(Icons.search, size: 25),
-            //       tooltip: 'Search for products',
-            //       onPressed: () {},
-            //     ),
-            //   ),
-            // ],
             leading: IconButton(
               icon: Icon(Icons.menu, size: 25),
               onPressed: () {},
@@ -130,40 +115,7 @@ class _HomePageState extends State<HomePage> {
     return _headerImage;
   }
 
-  Widget _buildContent() {
-    return FutureBuilder(
-      // Initialize FlutterFire:
-      future: _productsRequest,
-      builder: (context, AsyncSnapshot<List> snapshot) {
-        // Check for errors
-        if (snapshot.hasError) {
-          print(snapshot.error);
-          return Center(
-            child: Icon(Icons.error, color: Colors.red, size: 50),
-          );
-        }
-
-        // Once complete, show your application
-        if (snapshot.connectionState == ConnectionState.done ||
-            snapshot.hasData) {
-          // intialize a new product list
-          if (_productList == null) {
-            _productList = snapshot.data;
-            sortProducts(); // sort to have followed at top
-          }
-
-          return _buildProductTabs();
-        }
-
-        // Otherwise, show something whilst waiting for initialization to complete
-        return Center(
-          child: SpinKitRotatingCircle(color: Colors.white, size: 50.0),
-        );
-      },
-    );
-  }
-
-  Widget _buildProductTabs() {
+  Widget _buildProductViews() {
     List<Widget> tabs = List();
     for (int i = 0; i < _tabMembership.length; i++) {
       var belongsInTab = _tabMembership[i];
@@ -172,7 +124,6 @@ class _HomePageState extends State<HomePage> {
 
       var tab = ListView.builder(
         padding: const EdgeInsets.all(8),
-        // dragStartBehavior: DragStartBehavior.down,
         itemCount: tabProducts.length,
         itemBuilder: (context, i) => _buildProductTile(tabProducts[i]),
       );
@@ -249,17 +200,5 @@ class _HomePageState extends State<HomePage> {
       // sorts low to high --> a should be less than b if a = true and b = false
       return isFollowing[a] && !isFollowing[b] ? -1 : 1;
     });
-  }
-}
-
-class ProductList extends StatefulWidget {
-  @override
-  _ProductListState createState() => _ProductListState();
-}
-
-class _ProductListState extends State<ProductList> {
-  @override
-  Widget build(BuildContext context) {
-    return Container();
   }
 }

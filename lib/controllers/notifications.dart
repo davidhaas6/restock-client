@@ -11,6 +11,9 @@ Future<void> backgroundMessageHandler(RemoteMessage message) async {
   // make sure you call `initializeApp` before using other Firebase services.
   await Firebase.initializeApp();
 
+  Duration msgLatency = DateTime.now().difference(message.sentTime);
+  print('Latency: ${msgLatency.inMilliseconds} ms');
+
   print("Handling a background message: ${message.messageId}");
 }
 
@@ -58,7 +61,6 @@ class MessageContext extends ChangeNotifier {
   Future<bool> initCloudMessaging() async {
     bool fcmInitialized = true;
     messaging = FirebaseMessaging.instance;
-    
 
     NotificationSettings settings = await messaging.requestPermission(
       alert: true,
@@ -84,6 +86,9 @@ class MessageContext extends ChangeNotifier {
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       print('Got a message whilst in the foreground!');
       print('Message data: ${message.data}');
+
+      Duration msgLatency = DateTime.now().difference(message.sentTime);
+      print('Latency: ${msgLatency.inMilliseconds} ms');
 
       RemoteNotification notification = message.notification;
       AndroidNotification android = message.notification?.android;
@@ -120,5 +125,4 @@ class MessageContext extends ChangeNotifier {
       debugPrint('notification payload: $payload');
     }
   }
-
 }

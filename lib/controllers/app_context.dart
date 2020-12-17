@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart';
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -11,6 +13,8 @@ class AppContext extends ChangeNotifier {
   FirebaseFirestore _firestore;
   SharedPreferences preferences;
 
+  final Color primaryColor = Color.fromRGBO(41, 60, 79, 1);
+
   AppContext();
 
   Future<bool> init() async {
@@ -22,6 +26,8 @@ class AppContext extends ChangeNotifier {
     await _notifications.initCloudMessaging();
 
     await initDatabase();
+
+    return true; //TODO
   }
 
   // Initializes connection with Firebase database
